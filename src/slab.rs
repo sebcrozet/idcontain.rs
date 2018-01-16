@@ -368,6 +368,53 @@ impl<T> IdSlab<T> {
         )
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements e such that f(&e) returns false.
+    /// This method operates in place.
+    ///
+    /// Panics
+    /// ---
+    /// None.
+    ///
+    /// Example
+    /// ---
+    /// ```
+    /// # use idcontain::IdSlab;
+    /// let mut id_slab = IdSlab::new();
+    /// let id1 = id_slab.insert(1);
+    /// let id2 = id_slab.insert(2);
+    /// let id3 = id_slab.insert(3);
+    /// let id4 = id_slab.insert(4);
+    ///
+    /// id_slab.retain(|e| *e % 2 == 0);
+    ///
+    /// assert!(!id_slab.contains(id1));
+    /// assert!(id_slab.contains(id2));
+    /// assert!(!id_slab.contains(id3));
+    /// assert!(id_slab.contains(id4));
+    /// ```
+    pub fn retain<F: FnMut(&T) -> bool>(&mut self, mut f: F) {
+        for i in 0 .. self.slots.len() {
+            let mut to_remove = Id::invalid();
+
+            {
+                let slot = &self.slots[i];
+                if let Slot::Occupied { ref value } = slot.slot {
+                    if !f(value) {
+                        to_remove = Id {
+                            index: i as u32,
+                            tag: slot.tag,
+                            _data: PhantomData
+                        };
+                    }
+                }
+            }
+
+            let _ = self.remove(to_remove);
+        }
+    }
+
     /// Iterates over references to the elements in the `IdSlab`.
     ///
     /// While this operation has good cache locality, its worst-case complexity is
